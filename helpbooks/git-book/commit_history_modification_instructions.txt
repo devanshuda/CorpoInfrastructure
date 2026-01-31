@@ -1,0 +1,188 @@
+# Modifying Git Commit History
+
+## 1. Linking Local Repo to a New GitHub Remote
+
+How to connect a local Git repository to a newly created GitHub repository?
+
+The key steps were:
+
+* Add the remote:
+
+```bash
+git remote add origin <repo-url>
+```
+
+* Push commits:
+
+```bash
+git push -u origin main
+```
+
+If commits were already present locally, no extra commit was needed.
+
+---
+
+## 2. Push Rejected: Remote Contains Work You Don’t Have
+
+When tried:
+
+```bash
+git push -u origin main
+```
+
+Git returned:
+
+* Push rejected because the remote repo already had commits (like README/license).
+
+Git suggested pulling first.
+
+---
+
+## 3. Pull Failed: Unrelated Histories Error
+
+When tried:
+
+```bash
+git pull origin main
+```
+
+Git returned:
+
+```text
+fatal: refusing to merge unrelated histories
+```
+
+This happened because:
+
+* Local repo and remote repo were initialized separately.
+* Git saw two unrelated commit histories.
+
+### Fix:
+
+```bash
+git pull origin main --allow-unrelated-histories
+git push -u origin main
+```
+
+This merges both histories safely.
+
+---
+
+## 4. Removing Remote History but Keeping Files
+
+How to keep files but remove commit history inbetween the latest and target commit?
+
+We could use two approaches:
+
+### A. Full Reset (Destructive)
+
+* Delete `.git`
+* Reinitialize repository
+* Add all files to stage and commit
+* Add url of the remote repo to remote command
+* Force push the commit history to remote
+
+This wipes all history completely.
+
+### B. Removing Specific Commits
+* Soft reset to the targeted commit
+* Ensure changes being added in stage
+* Amend the commit message of the targeted commit
+* Force push the commit history to remote
+
+---
+
+## 5. Keeping History vs Removing Specific Commits
+
+Is there a way of not removing entire Git history?
+
+Understand this:
+
+* Git does not support removing commits cleanly without rewriting history.
+
+* Better alternatives include: 
+    - Merge once properly
+    - Rebase local commits onto remote
+    - Reset to remote and recommit changes
+
+---
+
+## 6. Advanced Case: Remove Only Commit C2
+
+If repo history became:
+
+* **C1** = Local commit
+* **C2** = Remote commit
+* **C3** = Merge commit
+
+If required:
+
+* Keep files from **C3**
+* Remove **C2** from history
+* Replace C1 content with C3 content
+* Remove all other commits
+* Do this without deleting `.git`
+
+### Best Solution: Reset + Amend Root Commit
+
+Steps:
+
+1. Find root commit: 
+
+* Using rev-list: (optional)
+```bash
+git rev-list --max-parents=0 HEAD
+```
+
+* Using log --oneline: (recommended)
+```bash
+git log --oneline
+```
+
+2. Soft reset to C1:
+
+```bash
+git reset --soft <C1-hash>
+```
+
+3. Amend first commit with current files:
+
+```bash
+git commit --amend -m "Initial commit"
+```
+
+4. Force push rewritten history:
+
+```bash
+git push --force origin main
+```
+
+### Result:
+
+* Only one commit remains (rewritten C1)
+* Files match C3
+* C2 and C3 disappear
+* `.git` folder stays intact
+
+---
+
+# Key Takeaways
+
+* Git history is a chain; removing commits requires rewriting history.
+* The safest fix for unrelated histories is:
+
+```bash
+git pull --allow-unrelated-histories
+```
+
+* To compress everything into one clean initial commit:
+
+```bash
+git reset --soft <root>
+git commit --amend
+git push --force
+```
+
+* Force pushing is required whenever history is rewritten.
+
+---

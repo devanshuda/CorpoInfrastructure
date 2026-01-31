@@ -1,0 +1,262 @@
+# Conventional Commits Specification (v1.0.0)
+
+## Overview
+
+**Conventional Commits** is a standardized commit message convention that provides a consistent way to structure Git commit messages.
+It enables both humans and automated tools to easily understand the intent of changes introduced in each commit.
+
+This convention is especially useful for:
+
+* Automated changelog generation
+* Semantic versioning (SemVer) automation
+* Clear communication across teams
+* Better commit history readability
+* CI/CD and release pipeline integration
+
+Conventional Commits defines a simple and predictable format that allows commit history to become a source of structured metadata.
+
+---
+
+## Commit Message Format
+
+A commit message must be structured as follows:
+
+```text
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Components
+
+| Component     | Required | Description                                           |
+| ------------- | -------- | ----------------------------------------------------- |
+| `type`        | Yes      | Describes the category of change                      |
+| `scope`       | No       | Indicates the area/module affected                    |
+| `description` | Yes      | Short summary of the change                           |
+| `body`        | No       | Additional details about the change                   |
+| `footer`      | No       | Metadata such as breaking changes or issue references |
+
+---
+
+## Type
+
+The `type` indicates what kind of change is being introduced.
+
+### Common Types
+
+| Type   | Meaning                    |
+| ------ | -------------------------- |
+| `feat` | A new feature for the user |
+| `fix`  | A bug fix for the user     |
+
+These are the two most important types because they map directly to **Semantic Versioning**.
+
+### Additional Recommended Types
+
+Projects may define additional types, such as:
+
+| Type       | Purpose                                                   |
+| ---------- | --------------------------------------------------------- |
+| `docs`     | Documentation-only changes                                |
+| `style`    | Code style changes (formatting, missing semicolons, etc.) |
+| `refactor` | Code refactoring without changing functionality           |
+| `perf`     | Performance improvements                                  |
+| `test`     | Adding or correcting tests                                |
+| `build`    | Build system or dependency changes                        |
+| `ci`       | Continuous integration configuration changes              |
+| `chore`    | Maintenance tasks that don’t affect production code       |
+
+These types improve clarity but do not automatically affect version bumps unless configured.
+
+---
+
+## Scope (Optional)
+
+The scope provides extra context by specifying which part of the codebase is affected.
+
+Example:
+
+```text
+feat(auth): add OAuth2 login support
+fix(api): handle null response correctly
+```
+
+Scopes are typically module names, components, or services.
+
+---
+
+## Description
+
+The description is a short summary written in the imperative form.
+
+### Guidelines
+
+* Use present tense: “add” not “added”
+* Keep it concise
+* Do not end with a period
+
+Example:
+
+```text
+feat(ui): add dark mode toggle
+```
+
+---
+
+## Body (Optional)
+
+The body is used to explain the motivation, reasoning, or additional context behind the change.
+
+Example:
+
+```text
+feat(payments): support Stripe checkout
+
+Added Stripe integration to enable credit card payments.
+This improves payment flexibility for customers.
+```
+
+---
+
+## Footer (Optional)
+
+Footers are used for metadata such as:
+
+* Breaking changes
+* Issue tracking references
+* Deprecation notices
+
+Example:
+
+```text
+fix(parser): correct tokenization issue
+
+Closes: #124
+```
+
+---
+
+## Breaking Changes
+
+A breaking change indicates that the commit introduces an incompatible API change.
+
+Breaking changes must be clearly communicated in one of two ways:
+
+---
+
+### 1. Using `!` After Type/Scope
+
+```text
+feat!: remove legacy authentication endpoints
+```
+
+Or:
+
+```text
+feat(auth)!: drop support for JWT v1
+```
+
+---
+
+### 2. Using `BREAKING CHANGE:` Footer
+
+```text
+feat(auth): migrate login system
+
+BREAKING CHANGE: The login API now requires OAuth tokens instead of passwords.
+```
+
+---
+
+## Semantic Versioning Mapping
+
+Conventional Commits integrates naturally with **SemVer**:
+
+| Commit Type / Marker     | Version Impact          |
+| ------------------------ | ----------------------- |
+| `fix:`                   | Patch release (`1.0.1`) |
+| `feat:`                  | Minor release (`1.1.0`) |
+| `BREAKING CHANGE` or `!` | Major release (`2.0.0`) |
+
+This allows automated tools to determine release versions based on commit history.
+
+---
+
+## Examples
+
+### Feature Addition
+
+```text
+feat(profile): add avatar upload functionality
+```
+
+---
+
+### Bug Fix
+
+```text
+fix(database): prevent duplicate key insertion
+```
+
+---
+
+### Documentation Update
+
+```text
+docs(readme): update setup instructions
+```
+
+---
+
+### Breaking Change
+
+```text
+feat(api)!: remove deprecated v1 endpoints
+```
+
+---
+
+### Commit With Issue Reference
+
+```text
+fix(auth): resolve token refresh bug
+
+Closes: #98
+```
+
+---
+
+## Benefits of Using Conventional Commits
+
+Adopting this convention provides:
+
+* **Readable and structured commit history**
+* Automatic changelog generation
+* Automated release versioning
+* Improved collaboration across teams
+* Clear audit trail for production systems
+* Better integration with DevOps workflows
+
+---
+
+## Best Practices
+
+* Keep commits small and focused
+* Use meaningful scopes when possible
+* Mark breaking changes explicitly
+* Follow consistent type naming across the team
+* Use tooling (commitlint, husky, semantic-release) to enforce rules
+
+---
+
+## Reference
+
+This documentation is based on the official Conventional Commits specification:
+
+Conventional Commits v1.0.0
+[https://www.conventionalcommits.org/en/v1.0.0/](https://www.conventionalcommits.org/en/v1.0.0/)
+
+---
