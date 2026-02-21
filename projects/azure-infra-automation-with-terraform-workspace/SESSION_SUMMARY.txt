@@ -1,0 +1,126 @@
+================================================================================
+TERRAFORM INFRASTRUCTURE SESSION SUMMARY - February 1, 2026
+================================================================================
+
+ISSUES RESOLVED:
+================================================================================
+
+1. TERRAFORM PLAN VARIABLE PROMPTS
+   Problem: Running "terraform plan" was prompting for nsgs and rgs values
+   Solution: Added -var-file flag to provide variable values
+   Command: terraform plan -var-file="values.tfvars" -out="corpodev-plan"
+
+2. TERRAFORM WORKSPACE IDENTIFICATION
+   Current Workspace: corpo-dev
+   Command to check: terraform workspace show
+   Command to list all: terraform workspace list
+
+3. SUBSCRIPTION ID MANAGEMENT
+   Objective: Use environment variables for subscription IDs without hardcoding
+   Implementation: TF_VAR_* environment variables
+   
+   Set environment variables in PowerShell:
+   $env:TF_VAR_corpodev_sub_id = "your-dev-subscription-id"
+   $env:TF_VAR_corpomgmt_sub_id = "your-mgmt-subscription-id"
+   $env:TF_VAR_corpoprod_sub_id = "your-prod-subscription-id"
+
+4. TERRAFORM PLAN SAVING
+   Purpose: Separate planning from apply to ensure consistency
+   Command: terraform plan -var-file="values.tfvars" -out="corpodev-plan"
+   Apply saved plan: terraform apply "corpodev-plan"
+   View saved plan: terraform show "corpodev-plan"
+
+5. TERRAFORM WORKSPACES ACROSS SESSIONS
+   Workspaces are stored in .terraform/tfstate.d/ directory on disk
+   Any PowerShell session accessing the same Terraform directory can see all workspaces
+   Best practice: Use different workspaces per session to avoid conflicts
+
+6. DUPLICATE terraform.tfstate.d DIRECTORIES
+   Found two locations:
+   - c:\Users\vs\Desktop\Projects\CorpoInfrastructure\terraform.tfstate.d\
+   - c:\Users\vs\Desktop\Projects\CorpoInfrastructure\scripts\terraform\terraform.tfstate.d\
+   
+   Action taken: Identified that root directory one should be removed
+   Command to remove: Remove-Item -Path "terraform.tfstate.d" -Recurse -Force
+   Best practice: Initialize terraform only in scripts/terraform/ directory
+
+7. WORKSPACE-SPECIFIC SUBSCRIPTION MAPPING
+   Problem: Variables cannot be used in variable default values
+   Solution: Created locals block in main.tf to map workspace to subscription ID
+   
+   Implementation in main.tf:
+   locals {
+     subscription_id = {
+       "corpo-dev"  = var.corpodev_sub_id
+       "corpo-mgmt" = var.corpomgmt_sub_id 
+       "corpo-prod" = var.corpoprod_sub_id
+     }[terraform.workspace]
+   }
+   
+   Updated providers.tf:
+   provider "azurerm" {
+     subscription_id = local.subscription_id
+     features {}
+   }
+
+FILES MODIFIED:
+================================================================================
+1. variables.tf
+   - Removed invalid default values from subscription_ids variable
+   
+2. main.tf
+   - Added locals block to map workspace names to subscription IDs dynamically
+   
+3. providers.tf
+   - Changed from: lookup(var.subscription_ids, terraform.workspace)
+   - Changed to: local.subscription_id
+
+CURRENT WORKSPACE STRUCTURE:
+================================================================================
+terraform.tfstate.d/
+  ├── corpo-dev/
+  ├── corpo-manage/
+  └── corpo-prod/
+
+TFVARS FILES AVAILABLE:
+  - values.tfvars (root level)
+  - dev_values.tfvars
+  - mgmt_values.tfvars
+  - prod_values.tfvars
+
+RECOMMENDED WORKFLOW:
+================================================================================
+
+For Development Environment:
+  1. terraform workspace select corpo-dev
+  2. Set environment variables:
+     $env:TF_VAR_corpodev_sub_id = "your-dev-subscription-id"
+  3. terraform plan -var-file="dev_values.tfvars" -out="./plan/corpodev-plan"
+  4. terraform apply "./plan/corpodev-plan"
+
+For Management Environment:
+  1. terraform workspace select corpo-manage
+  2. Set environment variables:
+     $env:TF_VAR_corpomgmt_sub_id = "your-mgmt-subscription-id"
+  3. terraform plan -var-file="mgmt_values.tfvars" -out="./plan/corpomgmt-plan"
+  4. terraform apply "./plan/corpomgmt-plan"
+
+For Production Environment:
+  1. terraform workspace select corpo-prod
+  2. Set environment variables:
+     $env:TF_VAR_corpoprod_sub_id = "your-prod-subscription-id"
+  3. terraform plan -var-file="prod_values.tfvars" -out="./plan/corpoprod-plan"
+  4. terraform apply "./plan/corpoprod-plan"
+
+IMPORTANT NOTES:
+================================================================================
+- Always run terraform commands from: c:\Users\vs\Desktop\Projects\CorpoInfrastructure\scripts\terraform\
+- Environment variables (TF_VAR_*) are sensitive - store them securely
+- Avoid storing subscription IDs in .tfvars files
+- Save plans before applying to avoid unintended changes
+- Use workspace selection to manage environment-specific configurations
+- The lookup() function approach was replaced with locals for better variable handling
+
+================================================================================
+END OF SESSION SUMMARY
+================================================================================

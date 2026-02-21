@@ -1,0 +1,407 @@
+================================================================================
+CASO DE ESTUDIO: CORPORATEINFRASTRUCTURE - MULTI-ENVIRONMENT AZURE DEPLOYMENT
+================================================================================
+
+EXECUTIVE SUMMARY
+================================================================================
+
+This case study documents the design and implementation of a multi-environment
+Terraform infrastructure automation system for managing Azure cloud resources
+across Development, Management, and Production environments. The solution 
+addresses the critical challenges of maintaining consistent infrastructure 
+configurations while isolating environment-specific settings and securing 
+sensitive subscription credentials.
+
+================================================================================
+BUSINESS CONTEXT
+================================================================================
+
+Organization: Corporate Infrastructure Team
+Objective: Automate Azure infrastructure provisioning and management
+Scope: Three distinct environments (Dev, Management, Production)
+Primary Resources: Azure Resource Groups and Network Security Groups
+Timeline: Ongoing infrastructure-as-code modernization
+
+KEY BUSINESS DRIVERS:
+- Reduce manual infrastructure provisioning time by 80%
+- Ensure consistent infrastructure across all environments
+- Implement environment isolation for security and compliance
+- Enable Infrastructure-as-Code (IaC) best practices
+- Maintain audit trails for infrastructure changes
+- Reduce human error in resource deployment
+
+================================================================================
+TECHNICAL REQUIREMENTS
+================================================================================
+
+FUNCTIONAL REQUIREMENTS:
+1. Support multiple Azure subscriptions (one per environment)
+2. Manage Resource Groups with configurable names and locations
+3. Create and configure Network Security Groups linked to Resource Groups
+4. Support environment-specific configurations without code duplication
+5. Separate infrastructure planning from application (plan/apply workflow)
+6. Enable dynamic subscription mapping based on deployment target
+
+NON-FUNCTIONAL REQUIREMENTS:
+1. Security: Keep sensitive subscription IDs out of version control
+2. Scalability: Support current 3 environments with room for growth
+3. Maintainability: Use modular Terraform structure with reusable modules
+4. Consistency: Ensure same code produces identical results across environments
+5. Auditability: Track all infrastructure changes through saved plans
+6. Isolation: Maintain separate state files per environment via workspaces
+
+================================================================================
+SOLUTION ARCHITECTURE
+================================================================================
+
+TERRAFORM PROJECT STRUCTURE:
+```
+CorpoInfrastructure/
+├── scripts/terraform/
+│   ├── main.tf                 # Module instantiation with locals
+│   ├── providers.tf            # Azure provider configuration
+│   ├── variables.tf            # Variable definitions
+│   ├── values.tfvars           # Root-level variable values
+│   ├── dev_values.tfvars       # Development environment values
+│   ├── mgmt_values.tfvars      # Management environment values
+│   ├── prod_values.tfvars      # Production environment values
+│   ├── modules/
+│   │   ├── rg/                 # Resource Group module
+│   │   │   ├── main.tf
+│   │   │   ├── output.tf
+│   │   │   └── variables.tf
+│   │   └── nsg/                # Network Security Group module
+│   │       ├── main.tf
+│   │       ├── output.tf
+│   │       └── variables.tf
+│   ├── environment/
+│   │   ├── dev/                # Dev environment-specific config
+│   │   ├── mgmt/               # Management environment-specific config
+│   │   └── prod/               # Production environment-specific config
+│   └── .terraform/
+│       ├── terraform.lock.hcl
+│       └── tfstate.d/
+│           ├── corpo-dev/
+│           ├── corpo-manage/
+│           └── corpo-prod/
+```
+
+CORE COMPONENTS:
+
+1. MODULES (Reusable Infrastructure Blocks)
+   - rg/ : Creates Azure Resource Groups
+   - nsg/ : Creates Azure Network Security Groups with RG references
+
+2. TERRAFORM WORKSPACES
+   - corpo-dev: Development environment state
+   - corpo-manage: Management environment state
+   - corpo-prod: Production environment state
+
+3. VARIABLE STRATEGY
+   Variables defined:
+   - corpodev_sub_id: Dev subscription (sensitive, from env var)
+   - corpomgmt_sub_id: Management subscription (sensitive, from env var)
+   - corpoprod_sub_id: Production subscription (sensitive, from env var)
+   - resource_groups: Map of RG configurations
+   - network_security_groups: Map of NSG configurations
+
+4. LOCALS MAPPING
+   Dynamic workspace-to-subscription mapping via locals block:
+   ```
+   locals {
+     subscription_id = {
+       "corpo-dev"  = var.corpodev_sub_id
+       "corpo-mgmt" = var.corpomgmt_sub_id 
+       "corpo-prod" = var.corpoprod_sub_id
+     }[terraform.workspace]
+   }
+   ```
+
+================================================================================
+IMPLEMENTATION DETAILS
+================================================================================
+
+RESOURCE GROUP CONFIGURATION (via resource_groups variable):
+- Supports multiple RGs per environment
+- Configurable names and Azure regions
+- Example: rg-cc-dev-01, rg-cc-dev-02 in East US, East US 2
+
+NETWORK SECURITY GROUP CONFIGURATION (via network_security_groups variable):
+- Linked to Resource Groups by key reference
+- Configurable NSG names
+- Example: nsg-cc-dev-01 linked to rg-cc-01
+
+SUBSCRIPTION MANAGEMENT:
+- Sensitive subscription IDs stored in environment variables (TF_VAR_*)
+- Automatic workspace-based subscription selection
+- Provider automatically uses correct subscription for current workspace
+
+STATE MANAGEMENT:
+- Separate state files per workspace in terraform.tfstate.d/
+- Prevents cross-environment state contamination
+- Enables independent environment management
+
+================================================================================
+CHALLENGES & SOLUTIONS
+================================================================================
+
+CHALLENGE 1: Variable Prompts During Plan
+────────────────────────────────────────────
+Problem: Running "terraform plan" prompted for nsgs and rgs values
+Root Cause: No -var-file specified, no default values
+Solution: Explicitly pass tfvars file with -var-file="values.tfvars"
+Impact: Eliminated interactive prompts, enabled automation
+
+CHALLENGE 2: Keeping Subscription IDs Secure
+────────────────────────────────────────────
+Problem: Subscription IDs hardcoded in tfvars files = security risk
+Root Cause: Sensitive values in version-controlled files
+Solution: Use TF_VAR_* environment variables instead
+Implementation: $env:TF_VAR_corpodev_sub_id = "subscription-id"
+Impact: Subscription IDs never committed to repository
+
+CHALLENGE 3: Environment-Specific Configuration
+────────────────────────────────────────────
+Problem: Different subscriptions per environment but same code
+Root Cause: Needed to map workspace name to subscription dynamically
+Solution: Create locals block with workspace-indexed map lookup
+Code:
+  locals {
+    subscription_id = {
+      "corpo-dev"  = var.corpodev_sub_id
+      "corpo-mgmt" = var.corpomgmt_sub_id 
+      "corpo-prod" = var.corpoprod_sub_id
+    }[terraform.workspace]
+  }
+Impact: Single code base works for all environments
+
+CHALLENGE 4: Invalid Variable References in Defaults
+────────────────────────────────────────────
+Problem: "Variables may not be used here" error
+Root Cause: Terraform doesn't allow variables in variable default values
+Solution: Move mapping logic to locals block instead
+Impact: Cleaner separation of concerns, better variable management
+
+CHALLENGE 5: Multiple terraform.tfstate.d Directories
+────────────────────────────────────────────
+Problem: terraform init run in multiple locations created duplicate state dirs
+Root Cause: State directories in both root and scripts/terraform/
+Solution: Maintain single terraform.tfstate.d in scripts/terraform/
+Best Practice: Always run terraform from one directory location
+
+================================================================================
+DEPLOYMENT WORKFLOW
+================================================================================
+
+FOR DEVELOPMENT ENVIRONMENT:
+────────────────────────────
+1. Set environment variable:
+   $env:TF_VAR_corpodev_sub_id = "dev-subscription-id"
+
+2. Select workspace:
+   terraform workspace select corpo-dev
+
+3. Create plan:
+   terraform plan -var-file="dev_values.tfvars" -out="./plan/corpodev-plan"
+
+4. Review plan output (resources to be created/modified/deleted)
+
+5. Apply infrastructure:
+   terraform apply "./plan/corpodev-plan"
+
+6. Verify resources in Azure portal
+
+FOR MANAGEMENT ENVIRONMENT:
+──────────────────────────
+1. Set environment variable:
+   $env:TF_VAR_corpomgmt_sub_id = "mgmt-subscription-id"
+
+2. Select workspace:
+   terraform workspace select corpo-manage
+
+3. Create plan:
+   terraform plan -var-file="mgmt_values.tfvars" -out="./plan/corpomgmt-plan"
+
+4. Review plan output
+
+5. Apply infrastructure:
+   terraform apply "./plan/corpomgmt-plan"
+
+FOR PRODUCTION ENVIRONMENT:
+──────────────────────────
+1. Set environment variable:
+   $env:TF_VAR_corpoprod_sub_id = "prod-subscription-id"
+
+2. Select workspace:
+   terraform workspace select corpo-prod
+
+3. Create plan:
+   terraform plan -var-file="prod_values.tfvars" -out="./plan/corpoprod-plan"
+
+4. Review plan output (additional scrutiny for prod)
+
+5. Apply infrastructure:
+   terraform apply "./plan/corpoprod-plan"
+
+================================================================================
+KEY BENEFITS REALIZED
+================================================================================
+
+1. INFRASTRUCTURE CONSISTENCY
+   ✓ Same Terraform code used across all environments
+   ✓ Eliminates configuration drift
+   ✓ Reproducible deployments guaranteed
+
+2. SECURITY IMPROVEMENTS
+   ✓ Sensitive subscription IDs not in version control
+   ✓ Environment variable-based credential management
+   ✓ Reduced attack surface for unauthorized access
+
+3. OPERATIONAL EFFICIENCY
+   ✓ Automated resource provisioning (vs manual Azure portal)
+   ✓ Plan/apply separation reduces deployment errors
+   ✓ Saved plans enable review before changes
+
+4. ENVIRONMENT ISOLATION
+   ✓ Separate workspaces prevent cross-environment contamination
+   ✓ Independent state management per environment
+   ✓ Each team can manage their environment independently
+
+5. AUDITABILITY & COMPLIANCE
+   ✓ All infrastructure changes tracked in plans
+   ✓ Version control history shows infrastructure evolution
+   ✓ Saved plans provide deployment audit trail
+
+6. SCALABILITY
+   ✓ Adding new environments requires minimal code changes
+   ✓ Modular structure supports expanding infrastructure
+   ✓ Template-based approach (tfvars) for new resources
+
+================================================================================
+LESSONS LEARNED & BEST PRACTICES
+================================================================================
+
+1. VARIABLE MANAGEMENT
+   ✓ Use environment variables for sensitive values
+   ✓ Never hardcode subscription IDs or credentials
+   ✓ Document variable requirements clearly
+   ✓ Use separate tfvars files per environment
+
+2. WORKSPACE ORGANIZATION
+   ✓ Use naming conventions: corpo-<environment>
+   ✓ Always verify current workspace before planning/applying
+   ✓ Don't run terraform from multiple locations
+   ✓ Keep .terraform/tfstate.d in one location only
+
+3. PLANNING & APPLYING
+   ✓ Always save plans: terraform plan -out="plan-file"
+   ✓ Review plans carefully before applying
+   ✓ Use terraform show to inspect saved plans
+   ✓ Apply from saved plans, not directly from plan command
+
+4. TERRAFORM CODE STRUCTURE
+   ✓ Use modules for reusability
+   ✓ Keep locals separate from variables
+   ✓ Use descriptive comments for complex logic
+   ✓ Organize files by function (main.tf, providers.tf, variables.tf)
+
+5. ENVIRONMENT CONFIGURATION
+   ✓ Use workspace-indexed locals for environment mapping
+   ✓ Avoid variable defaults with variable references
+   ✓ Document subscription-to-workspace mapping
+   ✓ Keep environment-specific configs in separate tfvars files
+
+6. STATE FILE MANAGEMENT
+   ✓ Never share state files between environments
+   ✓ Use terraform.tfstate.d/ for local workspaces
+   ✓ Consider remote backend for production (e.g., Azure Storage)
+   ✓ Implement state locking for concurrent access prevention
+
+================================================================================
+INFRASTRUCTURE OVERVIEW
+================================================================================
+
+DEVELOPMENT ENVIRONMENT (corpo-dev):
+- Subscription: dev-subscription-id
+- Resource Groups: rg-cc-dev-01, rg-cc-dev-02
+- Regions: East US, East US 2
+- Network Security Groups: nsg-cc-dev-01, nsg-cc-dev-02
+- Purpose: Testing and development work
+
+MANAGEMENT ENVIRONMENT (corpo-manage):
+- Subscription: mgmt-subscription-id
+- Purpose: Shared management resources
+- Similar structure to dev and prod
+
+PRODUCTION ENVIRONMENT (corpo-prod):
+- Subscription: prod-subscription-id
+- Resource Groups: Production-grade configuration
+- Higher availability and redundancy expectations
+- Stringent change control requirements
+
+================================================================================
+FUTURE ENHANCEMENTS
+================================================================================
+
+1. REMOTE STATE BACKEND
+   - Move from local terraform.tfstate.d/ to Azure Storage
+   - Enable team collaboration and state locking
+   - Implement state backup and recovery
+
+2. CI/CD INTEGRATION
+   - Automated plan generation on PR creation
+   - Automatic apply on merge to main branch
+   - Integration with Azure DevOps or GitHub Actions
+
+3. ENHANCED SECURITY
+   - Implement role-based access control for subscriptions
+   - Use Azure Key Vault for sensitive values
+   - Add policy-as-code validation (Sentinel/OPA)
+
+4. MONITORING & ALERTING
+   - Track infrastructure changes via audit logs
+   - Alert on unauthorized changes
+   - Cost monitoring per environment
+
+5. INFRASTRUCTURE EXPANSION
+   - Add networking components (VNets, Subnets)
+   - Include compute resources (VMs, App Services)
+   - Add storage accounts and databases
+   - Implement monitoring and logging infrastructure
+
+6. DOCUMENTATION
+   - Auto-generate documentation from Terraform code
+   - Create runbooks for common operations
+   - Document disaster recovery procedures
+
+================================================================================
+CONCLUSION
+================================================================================
+
+The CorpoInfrastructure Terraform implementation demonstrates a mature, 
+production-ready approach to multi-environment infrastructure automation. 
+By combining Terraform workspaces, modular design, environment variables 
+for sensitive data, and a structured deployment workflow, the solution 
+achieves:
+
+- Secure credential management (subscription IDs never in code)
+- Environment isolation without code duplication
+- Consistent, repeatable deployments across Dev, Management, and Production
+- Clear separation between infrastructure planning and application
+- Foundation for future cloud infrastructure growth and complexity
+
+This case study provides a template for organizations implementing 
+Infrastructure-as-Code practices in Azure environments.
+
+================================================================================
+CONTACT & SUPPORT
+================================================================================
+
+For questions or issues regarding this infrastructure setup, refer to:
+- SESSION_SUMMARY.txt (implementation details and workflow commands)
+- Terraform documentation: https://www.terraform.io/docs
+- Azure Terraform provider: https://registry.terraform.io/providers/hashicorp/azurerm
+
+================================================================================
+END OF CASE STUDY
+================================================================================

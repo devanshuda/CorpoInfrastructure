@@ -1,3 +1,13 @@
 ## Ignore folders
 .git
 .vscode
+
+## Ignore folder directories and files created by Terraform
+scripts/terraform/.terraform/
+scripts/terraform/environment/
+scripts/terraform/terraform.tfstate.d/
+scripts/terraform/plan/
+.terraform.lock.hcl
+
+## Ignore Terraform values files
+scripts/terraform/*_values.tfvars
