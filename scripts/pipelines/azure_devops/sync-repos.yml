@@ -38,16 +38,6 @@ schedules:
         - main
     always: true
 
-variables:
-  - name: githubRepo
-    value: $(githubRepo)
-  - name: azureRepo
-    value: $(azureRepo)
-  - name: github_pat
-    value: $(github_pat)  # Set in pipeline UI and mark as secret
-  - name: azure_devops_pat
-    value: $(azure_devops_pat)  # Set in pipeline UI and mark as secret
-
 pool:
   vmImage: 'ubuntu-latest'
 
@@ -56,20 +46,59 @@ steps:
 
   - script: |
       set -e
-      echo "Setting up Git credentials"
+      echo "=========================================="
+      echo "Step 1: Setting up Git credentials"
+      echo "=========================================="
       git config --global user.name "AzurePipeline"
       git config --global user.email "pipelines@azuredevops.com"
+      echo "✓ Git config completed"
+      echo ""
 
-      # clone empty mirror of Azure DevOps repo
+      echo "=========================================="
+      echo "Step 2: Checking environment variables"
+      echo "=========================================="
+      echo "GitHub Repo: $(githubRepo)"
+      echo "Azure Repo: $(azureRepo)"
+      echo "GitHub PAT length: ${#github_pat}"
+      echo "Azure DevOps PAT length: ${#azure_devops_pat}"
+      echo ""
+
+      echo "=========================================="
+      echo "Step 3: Cloning Azure DevOps repo as mirror"
+      echo "=========================================="
       git clone --mirror https://$(azure_devops_pat)@$(azureRepo) repo-mirror
+      echo "✓ Azure DevOps repo cloned successfully"
       cd repo-mirror
+      echo "✓ Entered repo-mirror directory"
+      echo ""
 
-      # add GitHub as a remote and fetch
+      echo "=========================================="
+      echo "Step 4: Adding GitHub as remote"
+      echo "=========================================="
       git remote add github https://$(github_pat)@$(githubRepo)
-      git fetch github --prune
+      echo "✓ GitHub remote added"
+      git remote -v
+      echo ""
 
-      # push all refs from GitHub to Azure DevOps
+      echo "=========================================="
+      echo "Step 5: Fetching from GitHub"
+      echo "=========================================="
+      git fetch github --prune
+      echo "✓ GitHub fetch completed"
+      git branch -a
+      echo ""
+
+      echo "=========================================="
+      echo "Step 6: Pushing all refs to Azure DevOps"
+      echo "=========================================="
       git push --mirror https://$(azure_devops_pat)@$(azureRepo)
+      echo "✓ Push to Azure DevOps completed successfully"
+      echo ""
+
+      echo "=========================================="
+      echo "Step 7: Sync completed"
+      echo "=========================================="
+      echo "GitHub repo has been successfully mirrored to Azure DevOps"
     displayName: 'Mirror GitHub -> Azure DevOps'
     env:
       github_pat: $(github_pat)
