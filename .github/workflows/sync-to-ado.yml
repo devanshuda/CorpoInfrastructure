@@ -1,0 +1,174 @@
+name: Sync to Azure DevOps
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+
+  validate_token:
+    name: Validate Azure DevOps PAT
+    runs-on: ubuntu-latest
+    environment: Common
+    env:
+      AZURE_DEVOPS_URL: ${{ vars.AZURE_DEVOPS_URL }}
+      AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+
+    steps:
+      - name: Validate required variables exist
+        run: |
+          echo "=== Checking required environment variables ==="
+
+          if [ -z "$AZURE_DEVOPS_URL" ]; then
+            echo "AZURE_DEVOPS_URL is not set"
+            exit 1
+          fi
+
+          if [ -z "$AZURE_DEVOPS_PAT" ]; then
+            echo "AZURE_DEVOPS_PAT is not set"
+            exit 1
+          fi
+
+          echo "Environment variables detected."
+          echo "AZURE_DEVOPS_URL: $AZURE_DEVOPS_URL"
+
+      - name: Verify PAT with Azure DevOps REST API
+        run: |
+          echo "=== PAT validation start ==="
+
+          org=$(echo $AZURE_DEVOPS_URL | cut -d'/' -f2)
+          echo "Detected organization: $org"
+
+          status=$(curl -s -o response.json -w "%{http_code}" \
+            -u :$AZURE_DEVOPS_PAT \
+            "https://dev.azure.com/$org/_apis/projects?api-version=6.0")
+
+          echo "HTTP Status: $status"
+
+          if [ "$status" -ne 200 ]; then
+            echo "PAT validation failed"
+            echo "Response:"
+            cat response.json
+            exit 1
+          fi
+
+          echo "PAT validation successful"
+          echo "=== PAT validation end ==="
+
+  mirror:
+    name: Mirror GitHub ➜ Azure DevOps
+    runs-on: ubuntu-latest
+    environment: Common
+    needs: validate_token
+    env:
+      AZURE_DEVOPS_URL: ${{ vars.AZURE_DEVOPS_URL }}
+      AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Validate checkout
+        run: |
+          echo "=== Validating repository checkout ==="
+          git status
+          echo "Current branch:"
+          git branch --show-current
+          echo "Listing refs:"
+          git show-ref
+          echo "Checkout validation complete."
+
+      - name: Configure Git
+        run: |
+          echo "=== Configuring git ==="
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "Configured values:"
+          git config --list | grep user
+
+      - name: Add Azure DevOps remote
+        run: |
+          echo "=== Adding Azure remote ==="
+          echo "Azure Repo URL: https://${AZURE_DEVOPS_PAT}@${AZURE_DEVOPS_URL}"
+          git remote add azure https://${AZURE_DEVOPS_PAT}@${AZURE_DEVOPS_URL}
+          rc=$?
+
+          if [ $rc -ne 0 ]; then
+            echo "Failed to add remote"
+            exit $rc
+          fi
+
+          echo "Remote added successfully"
+          echo "Current remotes:"
+          git remote -v
+
+      - name: Validate Azure remote connectivity
+        run: |
+          echo "=== Validating Azure remote connectivity ==="
+
+          git ls-remote azure
+          rc=$?
+
+          if [ $rc -ne 0 ]; then
+            echo "Unable to connect to Azure DevOps remote"
+            exit $rc
+          fi
+
+          echo "Azure remote is reachable."
+
+      - name: Push all refs to Azure DevOps
+        run: |
+          echo "=== Pushing all refs to Azure ==="
+
+          git push --mirror azure
+          rc=$?
+
+          echo "Push exit code: $rc"
+
+          if [ $rc -ne 0 ]; then
+            echo "Push failed"
+            exit $rc
+          fi
+
+          echo "Push completed successfully."
+
+      - name: Validate mirrored refs
+        run: |
+          echo "=== Validating mirrored refs ==="
+
+          echo "Local refs count:"
+          local_count=$(git show-ref | wc -l)
+          echo $local_count
+
+          echo "Azure refs count:"
+          remote_count=$(git ls-remote azure | wc -l)
+          echo $remote_count
+
+          if [ "$local_count" -eq "$remote_count" ]; then
+            echo "Ref counts match."
+          else
+            echo "Warning: Ref counts differ."
+            echo "Local: $local_count | Remote: $remote_count"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "=== Cleaning up ==="
+
+          git remote remove azure
+          rc=$?
+
+          if [ $rc -ne 0 ]; then
+            echo "Cleanup failed"
+            exit $rc
+          fi
+
+          echo "Cleanup successful."
+          echo "Remaining remotes:"
+          git remote -v

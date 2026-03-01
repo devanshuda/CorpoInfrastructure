@@ -1,0 +1,27 @@
+name: Show Environment Variable
+
+on:
+  workflow_dispatch:
+
+jobs:
+  show_variable:
+    runs-on: ubuntu-latest
+    environment: Common
+
+    env:
+      MY_VARIABLE: ${{ vars.MY_VARIABLE }}
+
+    steps:
+      - name: Display environment variable
+        run: |
+          echo "=== Printing Environment Variable ==="
+
+          if [ -z "$MY_VARIABLE" ]; then
+            echo "MY_VARIABLE is not set or empty"
+            exit 1
+          fi
+
+          echo "Value of MY_VARIABLE:"
+          echo "$MY_VARIABLE"
+
+          echo "=== Done ==="
