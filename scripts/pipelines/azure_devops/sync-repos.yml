@@ -1,0 +1,76 @@
+# ============================================================================
+# REPO SYNC PIPELINE
+# ============================================================================
+# This pipeline mirrors commits from a GitHub repository into the Azure DevOps
+# repository. It can run on a schedule or be triggered manually.
+#
+# PREREQUISITES:
+# 1. GitHub Personal Access Token (PAT) with repo scope.
+# 2. Azure DevOps Personal Access Token (PAT) with Code (read & write) scope.
+# 3. Store both tokens as secret pipeline variables:
+#      - github_pat
+#      - azure_devops_pat
+#    (Optionally store them in a variable group.)
+# 4. Configure the GitHub repo URL and Azure DevOps repo URL below or via
+#    pipeline variables.
+#
+# USAGE:
+# - Add this YAML as a pipeline in Azure DevOps and run it manually or on a
+#   schedule (e.g., nightly).
+# - The pipeline will fetch changes from GitHub and push them to the
+#   corresponding branch in Azure DevOps.
+#
+# WARNING:
+# - This is a unidirectional sync (GitHub -> Azure DevOps). Avoid circular
+#   pushes in both directions unless you implement conflict handling.
+# - Ensure the branch names match between repos, or adjust the commands
+#   accordingly.
+#
+# ============================================================================
+
+trigger: none            # run manually or via schedule
+
+schedules:
+  - cron: "0 0 * * *"        # daily at midnight UTC
+    displayName: Daily sync
+    branches:
+      include:
+        - main
+    always: true
+
+variables:
+  - name: githubRepo
+    value: $(githubRepo)
+  - name: azureRepo
+    value: $(azureRepo)
+  - name: github_pat
+    value: $(github_pat)  # Set in pipeline UI and mark as secret
+  - name: azure_devops_pat
+    value: $(azure_devops_pat)  # Set in pipeline UI and mark as secret
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - checkout: none
+
+  - script: |
+      set -e
+      echo "Setting up Git credentials"
+      git config --global user.name "AzurePipeline"
+      git config --global user.email "pipelines@azuredevops.com"
+
+      # clone empty mirror of Azure DevOps repo
+      git clone --mirror https://$(azure_devops_pat)@$(azureRepo) repo-mirror
+      cd repo-mirror
+
+      # add GitHub as a remote and fetch
+      git remote add github https://$(github_pat)@$(githubRepo)
+      git fetch github --prune
+
+      # push all refs from GitHub to Azure DevOps
+      git push --mirror https://$(azure_devops_pat)@$(azureRepo)
+    displayName: 'Mirror GitHub -> Azure DevOps'
+    env:
+      github_pat: $(github_pat)
+      azure_devops_pat: $(azure_devops_pat)
