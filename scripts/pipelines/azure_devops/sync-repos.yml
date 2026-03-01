@@ -46,6 +46,7 @@ steps:
 
   - script: |
       set -e
+      set -x
       echo "=========================================="
       echo "Step 1: Setting up Git credentials"
       echo "=========================================="
