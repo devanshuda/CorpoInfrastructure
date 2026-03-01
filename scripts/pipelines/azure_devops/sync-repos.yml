@@ -91,7 +91,7 @@ steps:
       echo "=========================================="
       echo "Step 6: Pushing all refs to Azure DevOps"
       echo "=========================================="
-      git push --mirror https://$(azure_devops_pat)@$(azureRepo)
+      git push --mirror --force https://$(azure_devops_pat)@$(azureRepo)
       echo "✓ Push to Azure DevOps completed successfully"
       echo ""
 
