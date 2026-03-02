@@ -2,12 +2,29 @@
 .git
 .vscode
 
+#-----------------------
+# Infra - Azure 
+#-----------------------
+
 ## Ignore folder directories and files created by Terraform
-scripts/terraform/.terraform/
-scripts/terraform/environment/
-scripts/terraform/terraform.tfstate.d/
-scripts/terraform/plan/
+scripts/terraform/infra-azure/.terraform/
+scripts/terraform/infra-azure/environment/
+scripts/terraform/infra-azure/terraform.tfstate.d/
+scripts/terraform/infra-azure/plan/
 .terraform.lock.hcl
 
 ## Ignore Terraform values files
-scripts/terraform/*_values.tfvars
+scripts/terraform/infra-azure/*_values.tfvars
+
+#-----------------------
+# Infra - AWS 
+#-----------------------
+## Ignore folder directories and files created by Terraform
+scripts/terraform/infra-aws/.terraform/
+scripts/terraform/infra-aws/environment/
+scripts/terraform/infra-aws/terraform.tfstate.d/
+scripts/terraform/infra-aws/plan/
+.terraform.lock.hcl
+
+## Ignore Terraform values files
+scripts/terraform/infra-aws/*_values.tfvars
