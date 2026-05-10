@@ -4,6 +4,7 @@ Replace the placeholder values below or supply them at init time with
 `terraform init -backend-config="key=value"`.
 */
 
+/*
 terraform {
 	backend "azurerm" {
 		# Replace these values or pass them via -backend-config during `terraform init`
@@ -18,4 +19,6 @@ terraform {
 		# subscription_id = "<SUBSCRIPTION_ID>"
 	}
 }
+
+*/
 

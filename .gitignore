@@ -3,6 +3,17 @@
 .vscode
 
 #-----------------------
+# Ignore helpbooks 
+#-----------------------
+helpbooks/pipeline-book/
+
+#-----------------------
+# Ignore pipelines
+#-----------------------
+pipelines/common/
+pipelines/environments/dev/create-azure-resources-terraform.yml
+
+#-----------------------
 # Infra - Azure 
 #-----------------------
 
