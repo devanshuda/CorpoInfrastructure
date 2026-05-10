@@ -26,7 +26,7 @@ stages:
     steps:
 
     # -------------------------------------------------------------------------
-    # Checkout Source Code
+    # Checkout Repository
     # -------------------------------------------------------------------------
     - checkout: self
       fetchDepth: 0
@@ -41,39 +41,33 @@ stages:
         terraformVersion: $(terraformVersion)
 
     # -------------------------------------------------------------------------
-    # Terraform Init
+    # Terraform Init / Validate / Plan
     # -------------------------------------------------------------------------
-    - task: TerraformTask@5
-      displayName: 'Terraform Init'
+    - task: AzureCLI@2
+      displayName: 'Run Terraform Plan'
       inputs:
-        provider: 'azurerm'
-        command: 'init'
+        azureSubscription: 'terraform-corpodev-sp'
+
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+
         workingDirectory: $(tfWorkingDir)
 
-    # -------------------------------------------------------------------------
-    # Terraform Validate
-    # -------------------------------------------------------------------------
-    - task: TerraformTask@5
-      displayName: 'Terraform Validate'
-      inputs:
-        provider: 'azurerm'
-        command: 'validate'
-        workingDirectory: $(tfWorkingDir)    
+        inlineScript: |
 
-    # -------------------------------------------------------------------------
-    # Terraform Plan
-    # -------------------------------------------------------------------------
-    - task: TerraformTask@5
-      displayName: 'Terraform Plan'
-      inputs:
-        provider: 'azurerm'
-        command: 'plan'
-        workingDirectory: $(tfWorkingDir)
+          echo "Terraform Version:"
+          terraform version
 
-        # Generate tfplan file
+          echo "Running Terraform Init..."
+          terraform init
 
-        commandOptions: '-var-file=dev.tfvars -out=$(Build.SourcesDirectory)/scripts/terraform/infra-azure/plan/corpodev-plan.tfplan'
+          echo "Running Terraform Validate..."
+          terraform validate
 
+          echo "Running Terraform Plan..."
+          terraform plan \
+            -var-file=dev.tfvars \
+            -out=$(Build.SourcesDirectory)/scripts/terraform/infra-azure/plan/corpodev-plan.tfplan
 
     # -------------------------------------------------------------------------
     # Publish Terraform Plan Artifact
@@ -84,4 +78,3 @@ stages:
         pathToPublish: '$(Build.SourcesDirectory)/scripts/terraform/infra-azure/plan/corpodev-plan.tfplan'
         artifactName: 'terraform-plan'
         publishLocation: 'Container'
-    
