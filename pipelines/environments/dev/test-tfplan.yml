@@ -35,7 +35,7 @@ stages:
     # -------------------------------------------------------------------------
     # Install Terraform
     # -------------------------------------------------------------------------
-    - task: TerraformInstaller@0
+    - task: TerraformInstaller@1
       displayName: 'Install Terraform'
       inputs:
         terraformVersion: $(terraformVersion)
@@ -43,7 +43,7 @@ stages:
     # -------------------------------------------------------------------------
     # Terraform Init
     # -------------------------------------------------------------------------
-    - task: TerraformTaskV4@4
+    - task: TerraformTask@5
       displayName: 'Terraform Init'
       inputs:
         provider: 'azurerm'
@@ -53,17 +53,17 @@ stages:
     # -------------------------------------------------------------------------
     # Terraform Validate
     # -------------------------------------------------------------------------
-    - task: TerraformTaskV4@4
+    - task: TerraformTask@5
       displayName: 'Terraform Validate'
       inputs:
         provider: 'azurerm'
         command: 'validate'
-        workingDirectory: $(tfWorkingDir)
+        workingDirectory: $(tfWorkingDir)    
 
     # -------------------------------------------------------------------------
     # Terraform Plan
     # -------------------------------------------------------------------------
-    - task: TerraformTaskV4@4
+    - task: TerraformTask@5
       displayName: 'Terraform Plan'
       inputs:
         provider: 'azurerm'
@@ -71,10 +71,9 @@ stages:
         workingDirectory: $(tfWorkingDir)
 
         # Generate tfplan file
+
         commandOptions: '-var-file=dev.tfvars -out=$(Build.SourcesDirectory)/scripts/terraform/infra-azure/plan/corpodev-plan.tfplan'
 
-        # Azure Service Connection
-        environmentServiceNameAzureRM: 'Azure-Service-Connection'
 
     # -------------------------------------------------------------------------
     # Publish Terraform Plan Artifact
@@ -85,3 +84,4 @@ stages:
         pathToPublish: '$(Build.SourcesDirectory)/scripts/terraform/infra-azure/plan/corpodev-plan.tfplan'
         artifactName: 'terraform-plan'
         publishLocation: 'Container'
+    
