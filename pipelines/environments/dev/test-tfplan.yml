@@ -6,7 +6,7 @@ variables:
   terraformVersion: '1.15.2'
 
   # Terraform Working Directory
-  tfWorkingDir: $(Build.SourcesDirectory)
+  tfWorkingDir: '$(Build.SourcesDirectory)/scripts/terraform/infra-azure/environments/dev'
 
 stages:
 
@@ -51,10 +51,16 @@ stages:
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
 
-        workingDirectory: $(tfWorkingDir)
+        workingDirectory: '$(tfWorkingDir)'
 
         inlineScript: |
 
+          echo "Current Directory:"
+          pwd
+
+          echo "Listing Files:"
+          ls -la
+          
           echo "Terraform Version:"
           terraform version
 
@@ -66,8 +72,8 @@ stages:
 
           echo "Running Terraform Plan..."
           terraform plan \
-            -var-file=dev.tfvars \
-            -out=$(tfWorkingDir)/corpodev-plan.tfplan
+            -var-file="./dev.tfvars" \
+            -out="corpodev-plan.tfplan"
 
     # -------------------------------------------------------------------------
     # Publish Terraform Plan Artifact
