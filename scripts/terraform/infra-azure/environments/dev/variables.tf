@@ -1,10 +1,11 @@
 /*** The following variables are defined for Terraform modules and configurations  ***/
 
-// Define the Subscription ID variable
+/*// Define the Subscription ID variable
 variable "subscription_id" {
   description = "The Subscription ID for the Azure resources."
   type        = string
 }
+*/
 
 // Define a map variable for multiple Resource Groups
 variable "resource_groups" {
