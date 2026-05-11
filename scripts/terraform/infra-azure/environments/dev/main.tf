@@ -3,7 +3,7 @@
 Resource Groups Module
 ------------------------*/
 module "rg" {
-  source      = "./modules/rg"
+  source      = "../../modules/rg"
 
   for_each = var.resource_groups
   rg_name     = each.value.rg_name
@@ -14,7 +14,7 @@ module "rg" {
 Network Security Group Module
 -------------------------------*/
 module "nsg" {
-  source = "./modules/nsg"
+  source = "../../modules/nsg"
 
   for_each = var.network_security_groups
   nsg_name          = each.value.nsg_name
