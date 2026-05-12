@@ -83,6 +83,5 @@ stages:
         command: 'publish'
         feed: 'project/terraform-plan'
         packageName: 'corpodev.tfplan'
-        packageVersion: '1.0.0'
         versionIncrement: 'major'
         directory: '$(System.DefaultWorkingDirectory)'
