@@ -47,12 +47,9 @@ stages:
       displayName: 'Run Terraform Plan'
       inputs:
         azureSubscription: 'terraform-corpodev-sp'
-
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
-
         workingDirectory: '$(tfWorkingDir)'
-
         inlineScript: |
 
           echo "Current Directory:"
@@ -75,13 +72,31 @@ stages:
             -var-file="./dev.tfvars" \
             -out="corpodev-plan.tfplan"
 
+
+    # -------------------------------------------------------------------------
+    # Prepare tfplan for Publishing
+    # -------------------------------------------------------------------------
+    - task: Bash@3
+      displayName: 'Prepare tfplan package'
+      inputs:
+        targetType: 'inline'
+        script: |
+          mkdir -p $(Build.ArtifactStagingDirectory)/tfplan
+
+          cp $(tfWorkingDir)/corpodev-plan.tfplan \
+            $(Build.ArtifactStagingDirectory)/tfplan/
+
+
     # -------------------------------------------------------------------------
     # Publish Terraform Plan in Artifacts Feed
     # -------------------------------------------------------------------------
     - task: UniversalPackages@1
+      displayName: 'Publish tfplan to Azure Artifacts'
       inputs:
         command: 'publish'
-        feed: 'project/terraform-plan'
-        packageName: 'corpodev.tfplan'
-        versionIncrement: 'major'
-        directory: '$(System.DefaultWorkingDirectory)'
+        publishDirectory: '$(Build.ArtifactStagingDirectory)/tfplan'
+        feedsToUsePublish: 'internal'
+        vstsFeedPublish: 'terraform-artifacts'
+        vstsFeedPackagePublish: 'corpodev-plan'
+        versionOption: 'custom'
+        versionPublish: '1.0.$(Build.BuildId)'
