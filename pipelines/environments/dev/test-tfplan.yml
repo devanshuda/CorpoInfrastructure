@@ -76,11 +76,13 @@ stages:
             -out="corpodev-plan.tfplan"
 
     # -------------------------------------------------------------------------
-    # Publish Terraform Plan Artifact
+    # Publish Terraform Plan in Artifacts Feed
     # -------------------------------------------------------------------------
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish Terraform Plan Artifact'
+    - task: UniversalPackages@1
       inputs:
-        pathToPublish: '$(tfWorkingDir)/corpodev-plan.tfplan'
-        artifactName: 'terraform-plan'
-        publishLocation: 'Container'
+        command: 'publish'
+        feed: 'project/terraform-plan'
+        packageName: 'corpodev.tfplan'
+        packageVersion: '1.0.0'
+        versionIncrement: 'major'
+        directory: '$(System.DefaultWorkingDirectory)'
