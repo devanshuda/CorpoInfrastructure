@@ -90,7 +90,7 @@ stages:
     # -------------------------------------------------------------------------
     # Publish Terraform Plan in Artifacts Feed
     # -------------------------------------------------------------------------
-    - task: UniversalPackages@1
+    - task: UniversalPackages@0
       displayName: 'Publish tfplan to Azure Artifacts'
       inputs:
         command: 'publish'
