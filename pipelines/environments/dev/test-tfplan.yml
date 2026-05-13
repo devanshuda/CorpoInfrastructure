@@ -96,7 +96,7 @@ stages:
         command: 'publish'
         publishDirectory: '$(Build.ArtifactStagingDirectory)/tfplan'
         feedsToUsePublish: 'internal'
-        vstsFeedPublish: 'terraform-artifacts'
+        vstsFeedPublish: 'CorpoInfrastructure/terraform-artifacts'
         vstsFeedPackagePublish: 'corpodev-plan'
         versionOption: 'custom'
         versionPublish: '1.0.$(Build.BuildId)'
